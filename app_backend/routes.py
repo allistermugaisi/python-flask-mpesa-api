@@ -33,7 +33,7 @@ def register():
 
     req_body = {
         "ShortCode": "",
-        "ResponseType": "",
+        "ResponseType": "Complete",
         "ConfirmationURL": base_url + '/c2b/confirmation',
         "ValidationURL": base_url + '/c2b/validation'
     }
@@ -41,7 +41,8 @@ def register():
     response = requests.post(mpesa_endpoint, json = req_body, headers = headers)
     return response.json()
 
-  
+# Callback URLS for validation and confimation 
+
 @app.route('/c2b/validation', methods=['POST'])
 def validate():
     # get data
@@ -79,7 +80,7 @@ def simulate():
     request_body = {
         "Amount": 100,
         "ShortCode": "",
-        "BillRefNumber": "",
+        "BillRefNumber": "TestAPI",
         "CommandID": "CustomerPayBillOnline",
         "Msisdn": ""
     }
@@ -89,8 +90,89 @@ def simulate():
     return simulate_response.json()
 
 
+# Simulate Lipa na M-Pesa Online Payment Transaction API
+@app.route("/lnmo")
+def init_stk():
+    mpesa_endpoint = "https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest"
+
+    access_token = _access_token()
+
+    headers = { "Authorization": "Bearer %s" % access_token }
+    
+
+    my_endpoint = base_url + "/lnmo"
+
+    Timestamp = datetime.now()
+
+    times = Timestamp.strftime("%Y%m%d%H%M%S")
+
+    password = "BUSINESS_SHORT_CODE" + "PASS_KEY" + times
+
+    encoded_pass = base64.b64encode(password.encode("utf-8"))
+
+    data = {
+        "BusinessShortCode": "",
+        "Password": encoded_pass,
+        "Timestamp": times,
+        "TransactionType": "CustomerPayBillOnline",
+        "PartyA": "", # fill with your phone number
+        "PartyB": "",
+        "PhoneNumber": "", # fill with your phone number
+        "CallBackURL": my_endpoint,
+        "AccountReference": "TestPay",
+        "TransactionDesc": "Lipa na Mpesa Online Simulation",
+        "Amount": 2
+    }
+
+    res = requests.post(mpesa_endpoint, json = data, headers = headers)
+    return res.json()
+
+# Callback URL for Lipa na Mpesa Online
+@app.route("/lnmo", methods=["POST"])
+def lnmo_result():
+    data = request.get_data()
+    print(data)
 
 
+# Simulate B2C Transaction API
+@app.route("/b2c")
+def make_payment():
+
+    mpesa_endpoint = "https://sandbox.safaricom.co.ke/mpesa/b2c/v1/paymentrequest"
+
+    access_token = _access_token
+
+    headers = { "Authorization": "Bearer %s" % access_token }
+
+    my_endpoint = base_url + "/b2c"
+
+    data = {
+        "InitiatorName": "apitest342",
+        "SecurityCredential": "GENERATE_KEY",
+        "Amount": "200",
+        "PartyA": "",
+        "PartyB": "254708374149",
+        "Remarks": "Pay Salary",
+        "QueueTimeOutURL": my_endpoint + "/timeout",
+        "ResultURL": my_endpoint + "/result",
+        "Occasion": "Salary"
+    }
+
+    res = requests.post(mpesa_endpoint, json = data, headers = headers)
+    return res.json()
+
+# Callback URLS for result and timeout
+
+@app.route("/b2c/result", methods=["POST"])
+def result_b2c():
+    data = request.get_data()
+    print(data)
+
+
+@app.route("/b2c/timeout", methods=["POST"])
+def b2c_timeout():
+    data = request.get_json()
+    print(data)
 
 
 # function to get access_token
